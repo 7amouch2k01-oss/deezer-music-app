@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VibeTunes</title>
+  <style>
+    /* =============================================
+       CSS RESET & CUSTOM PROPERTIES
+    ============================================= */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg-deep:        #0a0a0f;
+      --bg-card:        rgba(255, 255, 255, 0.04);
+      --bg-card-hover:  rgba(255, 255, 255, 0.08);
+      --border-glass:   rgba(255, 255, 255, 0.10);
+      --neon-blue:      #00c3ff;
+      --neon-pink:      #ff2d78;
+      --neon-blue-glow: 0 0 18px rgba(0, 195, 255, 0.55);
+      --neon-pink-glow: 0 0 18px rgba(255, 45, 120, 0.55);
+      --text-primary:   #f0f0f8;
+      --text-muted:     #8888aa;
+      --radius-lg:      20px;
+      --radius-md:      12px;
+      --radius-sm:      8px;
+      --transition:     0.25s ease;
+    }
+
+    /* =============================================
+       BASE
+    ============================================= */
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-deep);
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(0, 195, 255, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 90%, rgba(255, 45, 120, 0.08) 0%, transparent 60%);
+      background-attachment: fixed;
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 1rem 4rem;
+    }
+
+    /* =============================================
+       GLASSMORPHIC CARD MIXIN
+    ============================================= */
+    .glass {
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: var(--radius-lg);
+    }
+
+    /* =============================================
+       HEADER
+    ============================================= */
+    header {
+      width: 100%;
+      max-width: 720px;
+      padding: 2.5rem 0 1.5rem;
+      text-align: center;
+    }
+
+    #app-logo {
+      font-size: clamp(2rem, 6vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--neon-blue) 0%, var(--neon-pink) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.25rem;
+    }
+
+    #app-tagline {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 1.75rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* =============================================
+       SEARCH BAR
+    ============================================= */
+    #search-form {
+      display: flex;
+      gap: 0.5rem;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    #search-input {
+      flex: 1;
+      padding: 0.75rem 1.1rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+
+    #search-input::placeholder { color: var(--text-muted); }
+
+    #search-input:focus {
+      border-color: var(--neon-blue);
+      box-shadow: var(--neon-blue-glow);
+    }
+
+    #search-btn {
+      padding: 0.75rem 1.4rem;
+      background: linear-gradient(135deg, var(--neon-blue), var(--neon-pink));
+      border: none;
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: opacity var(--transition), transform var(--transition);
+      white-space: nowrap;
+    }
+
+    #search-btn:hover  { opacity: 0.88; transform: translateY(-1px); }
+    #search-btn:active { transform: translateY(0); }
+
+    /* =============================================
+       MAIN PLAYER CARD
+    ============================================= */
+    #player-card {
+      width: 100%;
+      max-width: 420px;
+      margin: 2rem auto 0;
+      padding: 2rem 1.75rem 1.75rem;
+      text-align: center;
+      box-shadow: 0 8px 48px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Album art */
+    #album-art-wrapper {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin: 0 auto 1.5rem;
+    }
+
+    #album-art {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: var(--radius-lg);
+      box-shadow: 0 0 40px rgba(0, 195, 255, 0.25), 0 0 80px rgba(255, 45, 120, 0.15);
+      transition: box-shadow var(--transition);
+    }
+
+    #album-art.playing {
+      box-shadow: 0 0 50px rgba(0, 195, 255, 0.5), 0 0 100px rgba(255, 45, 120, 0.3);
+      animation: pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.025); }
+    }
+
+    /* Song info */
+    #song-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.3rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #artist-name {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Progress bar */
+    #progress-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 1.5rem;
+    }
+
+    #current-time, #total-time {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      min-width: 2.5rem;
+      font-variant-numeric: tabular-nums;
+    }
+    #total-time { text-align: right; }
+
+    #progress-bar {
+      flex: 1;
+      -webkit-appearance: none;
+      appearance: none;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+      cursor: pointer;
+      transition: height var(--transition);
+    }
+
+    #progress-bar:hover { height: 6px; }
+
+    #progress-bar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--neon-blue), var(--neon-pink));
+      box-shadow: var(--neon-blue-glow);
+      cursor: pointer;
+      transition: transform var(--transition);
+    }
+
+    #progress-bar::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+    #progress-bar::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border: none;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--neon-blue), var(--neon-pink));
+      cursor: pointer;
+    }
+
+    /* Playback controls */
+    #controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .ctrl-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid var(--border-glass);
+      color: var(--text-primary);
+    }
+
+    .ctrl-btn:hover  { transform: scale(1.1); opacity: 0.9; }
+    .ctrl-btn:active { transform: scale(0.96); }
+
+    #prev-btn, #next-btn {
+      width: 44px;
+      height: 44px;
+      font-size: 1.1rem;
+    }
+
+    #play-pause-btn {
+      width: 60px;
+      height: 60px;
+      font-size: 1.5rem;
+      background: linear-gradient(135deg, var(--neon-blue), var(--neon-pink));
+      border: none;
+      box-shadow: var(--neon-blue-glow);
+    }
+
+    #play-pause-btn:hover {
+      box-shadow: var(--neon-blue-glow), var(--neon-pink-glow);
+    }
+
+    /* =============================================
+       TOP TRACKS SECTION
+    ============================================= */
+    #top-tracks-section {
+      width: 100%;
+      max-width: 720px;
+      margin: 2.5rem auto 0;
+    }
+
+    #top-tracks-heading {
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      padding: 0 0.25rem;
+    }
+
+    #top-tracks-container {
+      display: flex;
+      gap: 1rem;
+      overflow-x: auto;
+      padding-bottom: 0.75rem;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: var(--neon-blue) transparent;
+    }
+
+    #top-tracks-container::-webkit-scrollbar { height: 4px; }
+    #top-tracks-container::-webkit-scrollbar-track { background: transparent; }
+    #top-tracks-container::-webkit-scrollbar-thumb {
+      background: linear-gradient(90deg, var(--neon-blue), var(--neon-pink));
+      border-radius: 999px;
+    }
+
+    /* Individual track card */
+    .track-card {
+      flex: 0 0 140px;
+      scroll-snap-align: start;
+      background: var(--bg-card);
+      border: 1px solid var(--border-glass);
+      border-radius: var(--radius-md);
+      padding: 0.75rem;
+      cursor: pointer;
+      transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+      text-align: center;
+    }
+
+    .track-card:hover {
+      background: var(--bg-card-hover);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 195, 255, 0.15);
+    }
+
+    .track-card.active {
+      border-color: var(--neon-blue);
+      box-shadow: 0 0 0 1px var(--neon-blue), var(--neon-blue-glow);
+    }
+
+    .track-card img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: var(--radius-sm);
+      margin-bottom: 0.6rem;
+      display: block;
+    }
+
+    .track-card-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .track-card-artist {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 0.15rem;
+    }
+
+    /* =============================================
+       STATUS / LOADING
+    ============================================= */
+    #status-bar {
+      width: 100%;
+      max-width: 720px;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 1.25rem;
+      min-height: 1.2rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(0, 195, 255, 0.3);
+      border-top-color: var(--neon-blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* =============================================
+       RESPONSIVE
+    ============================================= */
+    @media (min-width: 540px) {
+      #album-art-wrapper { width: 240px; height: 240px; }
+      #player-card { padding: 2.5rem 2.25rem 2rem; }
+    }
+
+    @media (min-width: 768px) {
+      body { padding: 0 2rem 4rem; }
+      #album-art-wrapper { width: 260px; height: 260px; }
+      .track-card { flex: 0 0 160px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =============================================
+       HEADER
+  ============================================= -->
+  <header>
+    <h1 id="app-logo">VibeTunes</h1>
+    <p id="app-tagline">Feel every beat</p>
+
+    <form id="search-form" role="search" autocomplete="off">
+      <input
+        id="search-input"
+        type="search"
+        placeholder="Search artists, songs..."
+        aria-label="Search music"
+      />
+      <button id="search-btn" type="submit">Search</button>
+    </form>
+  </header>
+
+  <!-- =============================================
+       MAIN PLAYER
+  ============================================= -->
+  <section id="player-card" class="glass" aria-label="Music player">
+
+    <!-- Album art -->
+    <div id="album-art-wrapper">
+      <img
+        id="album-art"
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1'%3E%3Crect fill='%23111122' width='1' height='1'/%3E%3C/svg%3E"
+        alt="Album cover"
+      />
+    </div>
+
+    <!-- Song info -->
+    <p id="song-title">Loading...</p>
+    <p id="artist-name">Please wait</p>
+
+    <!-- Progress bar -->
+    <div id="progress-wrapper">
+      <span id="current-time">0:00</span>
+      <input
+        id="progress-bar"
+        type="range"
+        min="0"
+        max="100"
+        value="0"
+        step="0.1"
+        aria-label="Playback progress"
+      />
+      <span id="total-time">0:00</span>
+    </div>
+
+    <!-- Controls -->
+    <div id="controls">
+      <button id="prev-btn"   class="ctrl-btn" aria-label="Previous track">&#9664;&#9664;</button>
+      <button id="play-pause-btn" class="ctrl-btn" aria-label="Play">&#9654;</button>
+      <button id="next-btn"   class="ctrl-btn" aria-label="Next track">&#9654;&#9654;</button>
+    </div>
+
+  </section>
+
+  <!-- =============================================
+       STATUS BAR
+  ============================================= -->
+  <div id="status-bar" aria-live="polite"></div>
+
+  <!-- =============================================
+       TOP TRACKS
+  ============================================= -->
+  <section id="top-tracks-section" aria-label="Top tracks">
+    <h2 id="top-tracks-heading">Top Tracks</h2>
+    <div id="top-tracks-container" role="list"></div>
+  </section>
+
+  <!-- =============================================
+       JAVASCRIPT
+  ============================================= -->
+  <script>
+  (() => {
+    'use strict';
+
+    /* --------------------------------------------------
+       CONSTANTS & STATE
+    -------------------------------------------------- */
+    const CORS_PROXY   = 'https://corsproxy.io/?';
+    const DEEZER_BASE  = 'https://api.deezer.com';
+    const DEFAULT_QUERY = 'lofi';
+    const MAX_TRACKS    = 10;   // tracks fetched per search
+    const TOP_TRACKS_N  = 5;    // cards shown in top-tracks row
+
+    let playlist      = [];   // full list of track objects
+    let currentIndex  = 0;    // index of the playing track
+    let isPlaying     = false;
+
+    /* Native HTML5 Audio instance */
+    const audio = new Audio();
+    audio.crossOrigin = 'anonymous';
+    audio.preload = 'metadata';
+
+    /* --------------------------------------------------
+       DOM REFERENCES  (all by unique id)
+    -------------------------------------------------- */
+    const $ = id => document.getElementById(id);
+
+    const albumArt       = $('album-art');
+    const songTitle      = $('song-title');
+    const artistName     = $('artist-name');
+    const progressBar    = $('progress-bar');
+    const currentTimeEl  = $('current-time');
+    const totalTimeEl    = $('total-time');
+    const playPauseBtn   = $('play-pause-btn');
+    const prevBtn        = $('prev-btn');
+    const nextBtn        = $('next-btn');
+    const searchInput    = $('search-input');
+    const searchForm     = $('search-form');
+    const topTracksContainer = $('top-tracks-container');
+    const statusBar      = $('status-bar');
+
+    /* --------------------------------------------------
+       UTILITY HELPERS
+    -------------------------------------------------- */
+
+    /** Format seconds -> m:ss */
+    function formatTime(sec) {
+      if (!isFinite(sec) || sec < 0) return '0:00';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    /** Show a status message (with optional spinner) */
+    function setStatus(msg, loading = false) {
+      statusBar.innerHTML = loading
+        ? `<span class="spinner"></span>${msg}`
+        : msg;
+    }
+
+    /* --------------------------------------------------
+       DEEZER API
+    -------------------------------------------------- */
+
+    /**
+     * Fetch tracks from Deezer search endpoint.
+     * Uses corsproxy.io to bypass CORS restrictions in the browser.
+     * @param {string} query - search term
+     * @returns {Promise<Array>} array of normalised track objects
+     */
+    async function fetchTracks(query) {
+      const url = `${CORS_PROXY}${encodeURIComponent(`${DEEZER_BASE}/search?q=${encodeURIComponent(query)}&limit=${MAX_TRACKS}`)}` ;
+      const res  = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+
+      if (!json.data || json.data.length === 0) {
+        throw new Error('No tracks found');
+      }
+
+      /* Map Deezer response to a clean internal format */
+      return json.data.map(track => ({
+        id:       track.id,
+        title:    track.title,
+        artist:   track.artist.name,
+        preview:  track.preview,          // 30-second MP3 preview URL
+        cover:    track.album.cover_medium || track.album.cover,
+        album:    track.album.title,
+      }));
+    }
+
+    /* --------------------------------------------------
+       PLAYER LOGIC
+    -------------------------------------------------- */
+
+    /** Load a track by playlist index and optionally start playback */
+    function loadTrack(index, autoPlay = true) {
+      if (!playlist.length) return;
+
+      /* Clamp index */
+      currentIndex = ((index % playlist.length) + playlist.length) % playlist.length;
+      const track = playlist[currentIndex];
+
+      /* Update UI metadata */
+      songTitle.textContent  = track.title;
+      artistName.textContent = track.artist;
+      albumArt.src           = track.cover;
+      albumArt.alt           = `${track.title} by ${track.artist}`;
+
+      /* Reset progress */
+      progressBar.value  = 0;
+      currentTimeEl.textContent = '0:00';
+      totalTimeEl.textContent   = '0:00';
+
+      /* Load audio */
+      audio.src = track.preview;
+      audio.load();
+
+      if (autoPlay) {
+        audio.play().then(() => {
+          setIsPlaying(true);
+        }).catch(err => {
+          setStatus(`Playback blocked: click Play to start.`);
+          setIsPlaying(false);
+        });
+      } else {
+        setIsPlaying(false);
+      }
+
+      /* Highlight active card in top-tracks */
+      highlightActiveCard();
+    }
+
+    /** Toggle play / pause */
+    function togglePlayPause() {
+      if (!playlist.length) return;
+      if (audio.paused) {
+        audio.play().then(() => setIsPlaying(true)).catch(() => {});
+      } else {
+        audio.pause();
+        setIsPlaying(false);
+      }
+    }
+
+    /** Update play/pause button icon and album art animation */
+    function setIsPlaying(playing) {
+      isPlaying = playing;
+      /* Unicode play ▶ / pause ⏸ */
+      playPauseBtn.innerHTML = playing ? '&#9646;&#9646;' : '&#9654;';
+      playPauseBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+      albumArt.classList.toggle('playing', playing);
+    }
+
+    /** Highlight the currently playing card in the top-tracks row */
+    function highlightActiveCard() {
+      const cards = topTracksContainer.querySelectorAll('.track-card');
+      cards.forEach((card, i) => {
+        card.classList.toggle('active', i === currentIndex && currentIndex < TOP_TRACKS_N);
+      });
+    }
+
+    /* --------------------------------------------------
+       PROGRESS BAR
+    -------------------------------------------------- */
+
+    /** Called on audio timeupdate — syncs progress bar & time labels */
+    audio.addEventListener('timeupdate', () => {
+      if (!audio.duration) return;
+      const pct = (audio.currentTime / audio.duration) * 100;
+      progressBar.value = pct;
+
+      /* Update the CSS fill via a custom property trick */
+      progressBar.style.background = `linear-gradient(to right, var(--neon-blue) ${pct}%, rgba(255,255,255,0.12) ${pct}%)`;
+
+      currentTimeEl.textContent = formatTime(audio.currentTime);
+      totalTimeEl.textContent   = formatTime(audio.duration);
+    });
+
+    /** User scrubs the progress bar */
+    progressBar.addEventListener('input', () => {
+      if (!audio.duration) return;
+      audio.currentTime = (progressBar.value / 100) * audio.duration;
+    });
+
+    /** Auto-advance to next track when preview ends */
+    audio.addEventListener('ended', () => {
+      loadTrack(currentIndex + 1, true);
+    });
+
+    /** Show loading state while audio buffers */
+    audio.addEventListener('waiting', () => setStatus('Buffering...', true));
+    audio.addEventListener('playing', () => setStatus(''));
+    audio.addEventListener('error',   () => setStatus('Could not load audio. Skipping...'));
+
+    /* --------------------------------------------------
+       TOP TRACKS RENDERING
+    -------------------------------------------------- */
+
+    /** Render the first TOP_TRACKS_N tracks as clickable cards */
+    function renderTopTracks() {
+      topTracksContainer.innerHTML = '';
+
+      const slice = playlist.slice(0, TOP_TRACKS_N);
+      slice.forEach((track, i) => {
+        const card = document.createElement('div');
+        card.className = 'track-card';
+        card.setAttribute('role', 'listitem');
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('aria-label', `${track.title} by ${track.artist}`);
+
+        card.innerHTML = `
+          <img src="${track.cover}" alt="${track.title}" loading="lazy" />
+          <p class="track-card-title">${track.title}</p>
+          <p class="track-card-artist">${track.artist}</p>
+        `;
+
+        /* Click or keyboard Enter to load track */
+        const loadThis = () => loadTrack(i, true);
+        card.addEventListener('click', loadThis);
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadThis(); } });
+
+        topTracksContainer.appendChild(card);
+      });
+
+      highlightActiveCard();
+    }
+
+    /* --------------------------------------------------
+       SEARCH
+    -------------------------------------------------- */
+
+    /** Main search + load function */
+    async function search(query) {
+      if (!query.trim()) return;
+      setStatus(`Searching for "${query}"...`, true);
+
+      try {
+        playlist     = await fetchTracks(query);
+        currentIndex = 0;
+        renderTopTracks();
+        loadTrack(0, true);
+        setStatus('');
+      } catch (err) {
+        setStatus(`Error: ${err.message}`);
+      }
+    }
+
+    /* --------------------------------------------------
+       EVENT LISTENERS
+    -------------------------------------------------- */
+
+    /* Search form submit */
+    searchForm.addEventListener('submit', e => {
+      e.preventDefault();
+      const q = searchInput.value.trim();
+      if (q) search(q);
+    });
+
+    /* Playback controls */
+    playPauseBtn.addEventListener('click', togglePlayPause);
+    nextBtn.addEventListener('click', () => loadTrack(currentIndex + 1, true));
+    prevBtn.addEventListener('click', () => loadTrack(currentIndex - 1, true));
+
+    /* Keyboard shortcuts (global) */
+    document.addEventListener('keydown', e => {
+      /* Ignore when typing in search */
+      if (e.target === searchInput) return;
+      if (e.key === ' ')          { e.preventDefault(); togglePlayPause(); }
+      else if (e.key === 'ArrowRight') loadTrack(currentIndex + 1, true);
+      else if (e.key === 'ArrowLeft')  loadTrack(currentIndex - 1, true);
+    });
+
+    /* --------------------------------------------------
+       INIT — load default tracks on page load
+    -------------------------------------------------- */
+    search(DEFAULT_QUERY);
+
+  })();
+  </script>
+
+</body>
+</html>
